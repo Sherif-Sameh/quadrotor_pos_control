@@ -1,0 +1,12 @@
+# Ignore all build and unneccesary directories:
+
+build/
+devel/
+logs/
+rosbags/
+.catkin_tools/
+
+# Ignore all unneccesary files
+
+*.bag
+*.xml
