@@ -1,0 +1,27 @@
+sim_vehicle.py -v ArduCopter -f gazebo-iris --mavproxy-args="--streamrate=-1"
+
+roslaunch gazebo_ros empty_world.launch world_name:=worlds/iris_arducopter_runway.world
+
+roslaunch mavros apm_custom.launch
+
+roslaunch test_package test.launch
+
+rosservice call /trajectory_generator/set_mode "Take-off 0.5 5.0"
+
+rosservice call /trajectory_generator/set_mode "Trajectory_Tracking min_snap 3 5.0 5.0 5.0 8.0 2.0 7.0 3.0 0.0 3.0 5.0 10.0 15.0"
+
+rosservice call /trajectory_generator/set_mode "Trajectory_Tracking helical 1.0 0.0 6.2832 0.5 7.5"
+
+rosservice call /trajectory_generator/set_mode "Trajectory_Tracking helical 1.0 0.0 18.85 0.8 22.5"
+
+rosservice call /trajectory_generator/set_mode "Landing 0.1 8.0"
+
+mavproxy.py --master=udp:192.168.1.6:14550 --streamrate=-1 
+
+module load optitrack
+optitrack set obj_id 8
+optitrack set server 192.168.1.2
+optitrack set client 192.168.1.4
+module load message
+message SET_GPS_GLOBAL_ORIGIN 0 -353621474 1491651746 600000 0
+mode guided_nogps

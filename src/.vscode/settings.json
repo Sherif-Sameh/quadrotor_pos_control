@@ -1,0 +1,16 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/shiko/mavros_ws/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/shiko/mavros_ws/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "files.associations": {
+        "chrono": "cpp",
+        "tuple": "cpp",
+        "vector": "cpp",
+        "cmath": "cpp"
+    }
+}

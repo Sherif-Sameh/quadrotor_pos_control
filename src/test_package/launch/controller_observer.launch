@@ -1,0 +1,60 @@
+<launch>
+    <!-- Drone parameters -->
+    <arg name ="mass" default="1.029"/>
+    <arg name ="gravity" default="9.81"/>
+    <arg name = "max_thrust_per_motor" default="1000"/> <!-- in grams -->
+
+    <!-- Observer Parameters -->
+    <arg name = "epsilon_x" default="0.025"/>
+    <arg name = "alpha_x1" default="1"/>
+    <arg name = "alpha_x2" default="0.5"/>
+    <arg name = "epsilon_y" default="0.025"/>
+    <arg name = "alpha_y1" default="1"/>
+    <arg name = "alpha_y2" default="0.5"/>
+    <arg name = "epsilon_z" default="0.01"/>
+    <arg name = "alpha_z1" default="1"/>
+    <arg name = "alpha_z2" default="0.5"/>
+    <arg name = "sampling_time" default="0.02"/>
+    
+    <!-- Controller parameters -->
+    <arg name = "smc_alpha" default="1.0"/>
+    <arg name = "K1" default="5.5"/>
+    <arg name = "Ky" default="2.0"/>
+    <arg name = "Kx" default="2.0"/>
+
+    <!-- Topic Names -->
+    <arg name = "imu_topic_name" default="/mavros/imu/data"/>
+    <arg name = "mcs_topic_name" default="/iris_demo/pose"/>
+    <arg name = "mavros_attitude_target_topic_name" default="/mavros/setpoint_raw/attitude"/>
+    <arg name = "trajectory_generator_topic_name" default="/trajectory_generator/trajectory"/>
+  
+    <!-- Launching model positions capturing node -->
+    <node name="smc_controller_observer" pkg="test_package" type="smc_controller_observer.py" output="screen" respawn="true" >
+      <param name="mass" value="$(arg mass)" />
+      <param name="gravity" value="$(arg gravity)" />
+      <param name="max_thrust_per_motor" value="$(arg max_thrust_per_motor)" />
+
+      <param name="epsilon_x" value="$(arg epsilon_x)" />
+      <param name="alpha_x1" value="$(arg alpha_x1)" />
+      <param name="alpha_x2" value="$(arg alpha_x2)" />
+      <param name="epsilon_y" value="$(arg epsilon_y)" />
+      <param name="alpha_y1" value="$(arg alpha_y1)" />
+      <param name="alpha_y2" value="$(arg alpha_y2)" />
+      <param name="epsilon_z" value="$(arg epsilon_z)" />
+      <param name="alpha_z1" value="$(arg alpha_z1)" />
+      <param name="alpha_z2" value="$(arg alpha_z2)" />
+      <param name="sampling_time" value="$(arg sampling_time)" />
+
+      <param name="smc_alpha" value="$(arg smc_alpha)" />
+      <param name="K1" value="$(arg K1)" />
+      <param name="Ky" value="$(arg Ky)" />
+      <param name="Kx" value="$(arg Kx)" />
+
+      <param name="imu_topic_name" value="$(arg imu_topic_name)" />
+      <param name="mcs_topic_name" value="$(arg mcs_topic_name)" />
+      <param name="mavros_attitude_target_topic_name" value="$(arg mavros_attitude_target_topic_name)" />
+      <param name="trajectory_generator_topic_name" value="$(arg trajectory_generator_topic_name)" />
+    </node>
+  
+   
+  </launch>
