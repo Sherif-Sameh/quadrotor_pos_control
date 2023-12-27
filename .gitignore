@@ -9,4 +9,4 @@ rosbags/
 # Ignore all unneccesary files
 
 *.bag
-*.xml
+pose_layout.xml

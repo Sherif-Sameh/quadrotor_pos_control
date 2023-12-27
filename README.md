@@ -29,7 +29,7 @@ Note: Replace the version of ArduCopter with the latest stable version currently
     git submodule update --init --recursive
 
 ### b. Install dependencies
-    sudo apt install python3-matplotlib python3-serial python3-wxgtk3.0 python3-wxtools python3-lxml python3-scipy python3-opencv ccache gawk python3-pip python3-pexpect
+    sudo apt install python3-matplotlib python3-serial python-wxgtk3.0 python-wxtools python3-lxml python3-scipy python3-opencv ccache gawk python3-pip python3-pexpect
 
 ### c. Install MAVProxy
     sudo pip3 install future pymavlink MAVProxy
@@ -42,6 +42,15 @@ Add these lines at the end of the `.bashrc` file
     export PATH=/usr/lib/ccache:$PATH
 
 Save and exit
+
+### e. Change Python2 to Python3
+    nano ~/ardupilot/Tools/autotest/sim_vehicle.py
+
+Change `python` to `python3` in the first line: `#!/usr/bin/env python`
+
+    nano ~/ardupilot/modules/waf/waf-light
+
+Change `python` to `python3` in the first line as previously done
 
 ### e. Test installation
     cd ~/ardupilot/ArduCopter
@@ -108,6 +117,8 @@ Launch Gazebo in the 2nd terminal:
     mkdir build && cd build
     cmake .. -DCMAKE_CXX_FLAGS=-fPIC
     sudo make install
+    cd ..
+    sudo make
 
 Run a test program:
 
@@ -131,12 +142,12 @@ Initialize the workspace:
     cd ~/catkin_ws/src
     catkin_init_workspace
     cd ~/catkin_ws
-    catkin build
 
 Copy source code into the src folder:
 
-    rm -r src/*
-    cp -r ~/quadrotor_pos_control/src/* ./src/
+    cp -r ~/quadrotor_pos_control/src/* src/
+
+You have to install any missing dependecies such as: mavros_msgs, geometry_msgs, etc.
 
 Build from source:
 
