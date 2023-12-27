@@ -270,6 +270,8 @@ def controller_output():
     b = -K1*saturate(sliding_surface[2], 0.3) + x_des_dot[11] - 2*smc_alpha*(x_hat[5] - x_des[11]) \
         - (smc_alpha**2)*(x_hat[4] - x_des[10]) + g
     U_1 = a*b
+    
+    U_1 = max(min(U_1,max_thrust),0)
     # print("Thrust vector a: {} b:{}  U_1: {}".format(a,b,U_1))
 
     '''Virtual Input'''
@@ -285,8 +287,6 @@ def controller_output():
         b = -Ky*saturate(sliding_surface[1],0.75) + x_des_dot[9] - smc_alpha*(x_hat[3] - x_des[9])
         U_y = a*b
         # print("Uy vector a: {} b:{}  U_y: {}".format(a,b,U_y))
-
-    U_1 = max(min(U_1,30),0)
 
     '''Converting from U_x and U_y into attitude angles [-pi/3, pi/3]'''
     sin_max_angle = np.sin(np.pi/3)
