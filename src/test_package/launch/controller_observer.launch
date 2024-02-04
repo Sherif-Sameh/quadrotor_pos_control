@@ -11,7 +11,7 @@
     <arg name = "epsilon_y" default="0.025"/>
     <arg name = "alpha_y1" default="1"/>
     <arg name = "alpha_y2" default="0.5"/>
-    <arg name = "epsilon_z" default="0.01"/>
+    <arg name = "epsilon_z" default="0.015"/>
     <arg name = "alpha_z1" default="1"/>
     <arg name = "alpha_z2" default="0.5"/>
     <arg name = "sampling_time" default="0.02"/>
@@ -19,8 +19,8 @@
     <!-- Controller parameters -->
     <arg name = "smc_alpha" default="1.0"/>
     <arg name = "K1" default="5.5"/>
-    <arg name = "Ky" default="2.0"/>
-    <arg name = "Kx" default="2.0"/>
+    <arg name = "Ky" default="3.0"/>
+    <arg name = "Kx" default="3.0"/>
 
     <!-- Topic Names -->
     <arg name = "imu_topic_name" default="/mavros/imu/data"/>

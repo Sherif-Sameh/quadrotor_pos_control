@@ -11,6 +11,7 @@
         "chrono": "cpp",
         "tuple": "cpp",
         "vector": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "regex": "cpp"
     }
 }

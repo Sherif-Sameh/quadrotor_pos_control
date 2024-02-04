@@ -26,6 +26,10 @@ TrajectoryGenerator::TrajectoryGenerator(ros::NodeHandle &nh) : sf_active_state_
     ROS_INFO("Max landing rate: %.4fm/s", max_landing_rate);
     ROS_INFO("Trajectory publishing rate: %.4fHz", trajectory_publish_rate);
 
+    // Initialize non-ROS class members
+    position_latest = Vector3d::Zero();
+    prev_trajectory = Matrix3d::Zero();
+
     // Initialize ROS publishers, subscribers, service servers and service clients
     traj_pub = nh.advertise<test_package::DroneTrajectory>("/trajectory_generator/trajectory", 1, true);
     pose_sub = nh.subscribe(pose_topic_name, 3, &TrajectoryGenerator::callback_pose, this);
@@ -33,10 +37,7 @@ TrajectoryGenerator::TrajectoryGenerator(ros::NodeHandle &nh) : sf_active_state_
     set_flight_mode_client = nh.serviceClient<mavros_msgs::SetMode>(set_flight_mode_srv_name);
     abort_mission_srv = nh.advertiseService("/trajectory_generator/abort_mission", &TrajectoryGenerator::callback_abort_mission, this);
     set_mode_srv = nh.advertiseService("/trajectory_generator/set_mode", &TrajectoryGenerator::callback_set_mode, this);
-    
-    // Initialize non-ROS class members
-    position_latest = Vector3d::Zero();
-    prev_trajectory = Matrix3d::Zero();
+
     sf_states.push_back(std::make_unique<SFInactiveState>(string("Inactive"), arming_client, set_flight_mode_client));
     sf_states.push_back(std::make_unique<SFTakeOffState>(string("Take-off"), min_takeoff_height, 
                                                         max_takeoff_height, max_takeoff_rate));

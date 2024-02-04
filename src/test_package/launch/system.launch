@@ -21,7 +21,7 @@
     <arg name="yaw_tracking_enable" default="false" />
 
     <!-- Controller/Observer Input Arguments -->
-    <arg name ="mass" default="1.029" />
+    <arg name ="mass" default="1.329" />
     <arg name ="gravity" default="9.81" />
     <arg name ="max_thrust_per_motor" default="1000" /> <!-- in grams -->
 

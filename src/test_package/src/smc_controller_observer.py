@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import rospy
 import numpy as np
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TransformStamped
 from sensor_msgs.msg import Imu
 from test_package.msg import DroneTrajectory
 from test_package.msg import FullState
 from mavros_msgs.msg import AttitudeTarget
-from tf.transformations import euler_from_matrix, quaternion_matrix, euler_matrix, quaternion_from_matrix
+from tf.transformations import euler_from_matrix, quaternion_matrix, quaternion_from_matrix, euler_matrix
 '''
     This node is to capture the absolute position states of the drone and the platform in order to provide the 
     operating nodes that later utilize them to provide the controller with its inputs.
@@ -40,10 +40,9 @@ U_y = 0
 attitude_target = AttitudeTarget()
 state_estimate = FullState()
 
-'''Rotation Transform (R_A)^M (Rotation matrix of frame A w.r.t. frame M)'''
-RAM_matrix = 0
+'''Rotation Transform (R_B)^A (Rotation matrix of frame B w.r.t. frame A)'''
 RBA_matrix = 0
-RBM_matrix = 0
+RAM_matrix = 0
 
 '''Flags'''
 obtained_RAM = False
@@ -183,17 +182,16 @@ def imu_data_callback(imu_data:Imu):
     global obtained_RBA
 
     curr_orientation_in_quat = [imu_data.orientation.x,imu_data.orientation.y,imu_data.orientation.z,imu_data.orientation.w]
-    RBA_matrix = np.array(quaternion_matrix(curr_orientation_in_quat))
+    RBA_matrix = quaternion_matrix(curr_orientation_in_quat)
 
     # This step is to extract the rotation matrix only
-    RBA_matrix = RBA_matrix[:-1,:-1]
-
+    RBA_matrix = RBA_matrix[:3,:3]
     obtained_RBA = True
 
     if obtained_RAM:
         RBM_curr = np.matmul(RAM_matrix, RBA_matrix)
-        curr_orientation_in_euler = np.array(euler_from_matrix(RBM_curr, axes='rxyz'))
-        # print(f"Current Orientation (IMU - MCS): {curr_orientation_in_euler}")
+        curr_orientation_in_euler = np.array(euler_from_matrix(RBM_curr, axes='sxyz'))
+        # print(f"Current Orientation (AP): {curr_orientation_in_euler}")
 
         x[0] = curr_orientation_in_euler[0]
         x[2] = curr_orientation_in_euler[1]
@@ -201,7 +199,6 @@ def imu_data_callback(imu_data:Imu):
 
 def mcs_callback(mcs_data:PoseStamped):
     global x
-    global RBM_matrix
     global RAM_matrix
     global obtained_RAM
 
@@ -209,25 +206,24 @@ def mcs_callback(mcs_data:PoseStamped):
     x[8] = mcs_data.pose.position.y
     x[10] = mcs_data.pose.position.z
 
-    ############################################## I don't have anything to get feedback on the linear velocities of my system
     if obtained_RAM:
         controller_output()
 
     elif obtained_RBA:
+        # Calculate rotation matrix from frame AP to frame MCS
         curr_orientation_in_quat = [mcs_data.pose.orientation.x,mcs_data.pose.orientation.y,mcs_data.pose.orientation.z,mcs_data.pose.orientation.w]
-        RBM_matrix = np.array(quaternion_matrix(curr_orientation_in_quat))
-        # This step is to extract the rotation matrix only
-        RBM_matrix = RBM_matrix[:-1,:-1]
+        RBM_matrix = quaternion_matrix(curr_orientation_in_quat)
+        RBM_matrix = RBM_matrix[:3,:3]
         RAM_matrix = np.matmul(RBM_matrix, np.transpose(RBA_matrix))
         obtained_RAM = True
 
-        curr_orientation_in_euler_mcs = np.array(euler_from_matrix(RBM_matrix, axes='rxyz'))
-        curr_orientation_in_euler_ap = np.array(euler_from_matrix(RBA_matrix, axes='rxyz'))
-        offset_orientation_in_euler = np.array(euler_from_matrix(RAM_matrix, axes='rxyz'))
+        # Report calculated values
+        curr_orientation_in_euler_mcs = np.array(euler_from_matrix(RBM_matrix, axes='sxyz'))
+        curr_orientation_in_euler_ap = np.array(euler_from_matrix(RBA_matrix, axes='sxyz'))
+        offset_orientation_in_euler = np.array(euler_from_matrix(RAM_matrix, axes='sxyz'))
         print(f"Current Orientation (MCS): {curr_orientation_in_euler_mcs}")
         print(f"Current Orientation (AP): {curr_orientation_in_euler_ap}")
-        print(f"Offset between MCS and AP: {offset_orientation_in_euler}")
-
+        print(f"Offset between AP and MCS: {offset_orientation_in_euler}")
 
 def sliding_surfaces_computer():
     global sliding_surface
@@ -250,7 +246,7 @@ def sliding_surfaces_computer():
         everything by -1
     '''
     # Estimate integral of tracking errors in Z using Trapezoidal integration
-    if sliding_surface[2] < 0.3:
+    if sliding_surface[2] < 0.4:
         z_tilda_integral += (sampling_time/2) * ((x_hat_prev[4] - x_des_prev[10]) + (x_hat[4] - x_des[10]))
 
     sliding_surface[0] = x_hat[1] - x_des[7] + smc_alpha*(x_hat[0] - x_des[6])
@@ -267,11 +263,11 @@ def controller_output():
 
     '''Thrust Vector Input'''
     a = (m/(Cphi*Ctheta))
-    b = -K1*saturate(sliding_surface[2], 0.3) + x_des_dot[11] - 2*smc_alpha*(x_hat[5] - x_des[11]) \
+    b = -K1*saturate(sliding_surface[2], 0.4) + x_des_dot[11] - 2*smc_alpha*(x_hat[5] - x_des[11]) \
         - (smc_alpha**2)*(x_hat[4] - x_des[10]) + g
     U_1 = a*b
     
-    U_1 = max(min(U_1,max_thrust),0)
+    U_1 = max(min(U_1, max_thrust),0)
     # print("Thrust vector a: {} b:{}  U_1: {}".format(a,b,U_1))
 
     '''Virtual Input'''
@@ -280,44 +276,38 @@ def controller_output():
         U_y = 0
     else:
         a = m/U_1
-        b = -Kx*saturate(sliding_surface[0],0.75) + x_des_dot[7] - smc_alpha*(x_hat[1] - x_des[7])
+        b = -Kx*saturate(sliding_surface[0],0.5) + x_des_dot[7] - smc_alpha*(x_hat[1] - x_des[7])
         U_x = a*b
         # print("Ux vector a: {} b:{}  U_x: {}".format(a,b,U_x))
 
-        b = -Ky*saturate(sliding_surface[1],0.75) + x_des_dot[9] - smc_alpha*(x_hat[3] - x_des[9])
+        b = -Ky*saturate(sliding_surface[1],0.5) + x_des_dot[9] - smc_alpha*(x_hat[3] - x_des[9])
         U_y = a*b
         # print("Uy vector a: {} b:{}  U_y: {}".format(a,b,U_y))
 
     '''Converting from U_x and U_y into attitude angles [-pi/3, pi/3]'''
-    sin_max_angle = np.sin(np.pi/3)
+    sin_max_angle = np.sin(5*np.pi/12)
     sin_phi_des = U_x*np.sin(Yaw_des) - U_y*np.cos(Yaw_des)
     phi_des = np.arcsin(max(min(sin_phi_des, sin_max_angle), -sin_max_angle))
 
     sin_theta_des = (U_x - np.sin(phi_des) * np.sin(Yaw_des)) / (np.cos(phi_des) * np.cos(Yaw_des))
     theta_des = np.arcsin(max(min(sin_theta_des, sin_max_angle), -sin_max_angle))
+    
+    '''Obtaining the desired rotation in the AP frame '''
+    RBM_desired = np.array(euler_matrix(phi_des, theta_des, Yaw_des, axes='sxyz'))
+    RBM_desired = RBM_desired[:3,:3]
+    RBA_desired = np.matmul(np.transpose(RAM_matrix), RBM_desired)
 
-    Euler_des = (phi_des, theta_des, Yaw_des)
-
-    '''Obtaining the desired rotation'''
-    RBM_desired = np.array(euler_matrix(Euler_des[0],Euler_des[1],Euler_des[2], axes='rxyz'))
-    # This step is to extract the rotation matrix only
-    RBM_desired = RBM_desired[:-1,:-1]
-    desired_rotation = np.matmul(np.transpose(RAM_matrix),RBM_desired)
-
-    '''Converting into quaternion and publishing'''
-    desired_rotation = np.vstack((desired_rotation, [0,0,0]))
-    desired_rotation = np.hstack((desired_rotation, [[0],[0],[0],[1]]))
-    desired_qat = quaternion_from_matrix(desired_rotation)
-    # desired_euler = np.array(euler_from_matrix(desired_rotation[:-1, :-1], axes="rxyz"))
-    # print(f"Desired Euler (MCS): {Euler_des}")
-    # print(f"Desired Euler (AP): {desired_euler}")
+    ''' Converting the desired orientation into a quaternion '''
+    orientation_desired = np.eye(4)
+    orientation_desired[:3,:3] = RBA_desired
+    orientation_desired_quat = quaternion_from_matrix(orientation_desired)
 
     attitude_target.header.stamp = rospy.Time.now()
     attitude_target.type_mask = 7
-    attitude_target.orientation.x = desired_qat[0]
-    attitude_target.orientation.y = desired_qat[1]
-    attitude_target.orientation.z = desired_qat[2]
-    attitude_target.orientation.w = desired_qat[3]
+    attitude_target.orientation.x = orientation_desired_quat[0]
+    attitude_target.orientation.y = orientation_desired_quat[1]
+    attitude_target.orientation.z = orientation_desired_quat[2]
+    attitude_target.orientation.w = orientation_desired_quat[3]
     attitude_target.thrust = U_1/max_thrust
 
     '''Publish the desired thrust and attitude'''
@@ -332,7 +322,6 @@ def controller_output():
     state_estimate.pose.position.z  = x_hat[4]
     state_estimate.twist.linear.z   = x_hat[5]
     state_estimate_publisher.publish(state_estimate)
-
 
 if __name__ == '__main__':
     
